@@ -144,7 +144,7 @@ if __name__ == "__main__":
             epoch_batches_left = len(dataloader) - (batch_i + 1)
             time_left = datetime.timedelta(seconds=epoch_batches_left * (time.time() - epoch_start_time) / (batch_i + 1))
             time_elapsed = datetime.timedelta(seconds=(time.time() - start_time))
-            log_str += f"\n---- ETA {time_left}\n ---- Elapsed {time_elapsed}"
+            log_str += f"\n---- ETA {time_left}\n---- Elapsed {time_elapsed}"
 
             print(log_str)
 

@@ -11,3 +11,4 @@ weights/*.weights
 __pycache__
 checkpoints
 weights/darknet53.conv.74
+*.out
