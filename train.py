@@ -92,10 +92,12 @@ if __name__ == "__main__":
         "conf_obj",
         "conf_noobj",
     ]
+    print('start to training!\n')
+    start_time = time.time()
 
     for epoch in range(opt.epochs):
         model.train()
-        start_time = time.time()
+        epoch_start_time = time.time()
         for batch_i, (_, imgs, targets) in enumerate(dataloader):
             batches_done = len(dataloader) * epoch + batch_i
 
@@ -140,8 +142,9 @@ if __name__ == "__main__":
 
             # Determine approximate time left for epoch
             epoch_batches_left = len(dataloader) - (batch_i + 1)
-            time_left = datetime.timedelta(seconds=epoch_batches_left * (time.time() - start_time) / (batch_i + 1))
-            log_str += f"\n---- ETA {time_left}"
+            time_left = datetime.timedelta(seconds=epoch_batches_left * (time.time() - epoch_start_time) / (batch_i + 1))
+            time_elapsed = datetime.timedelta(seconds=(time.time() - start_time))
+            log_str += f"\n---- ETA {time_left}\n ---- Elapsed {time_elapsed}"
 
             print(log_str)
 
