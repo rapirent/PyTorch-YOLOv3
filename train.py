@@ -22,6 +22,15 @@ from torchvision import transforms
 from torch.autograd import Variable
 import torch.optim as optim
 
+from apex.fp16_utils import FP16_Optimizer
+
+def floatize_bn(module):
+    if isinstance(module, torch.nn.modules.BatchNorm2d._BatchNorm):
+        module.float()
+    for child in module.children():
+        floatize_bn(child)
+    return module
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=100, help="number of epochs")
@@ -36,6 +45,7 @@ if __name__ == "__main__":
     parser.add_argument("--evaluation_interval", type=int, default=1, help="interval evaluations on validation set")
     parser.add_argument("--compute_map", default=False, help="if True computes mAP every tenth batch")
     parser.add_argument("--multiscale_training", default=True, help="allow for multi-scale training")
+    parser.add_argument("--mixed_precision", default=False, help="use mixed-precision scheme for training")
     opt = parser.parse_args()
     print(opt)
 
@@ -54,6 +64,8 @@ if __name__ == "__main__":
 
     # Initiate model
     model = Darknet(opt.model_def).to(device)
+    if opt.mixed_precision:
+        model = floatize_bn(model.half())
     model.apply(weights_init_normal)
 
     # If specified we start from checkpoint
@@ -75,6 +87,7 @@ if __name__ == "__main__":
     )
 
     optimizer = torch.optim.Adam(model.parameters())
+    mpt_optimizer = FP16_Optimizer(optimizer, dynamic_loss_scale=True)
 
     metrics = [
         "grid_size",
@@ -104,13 +117,23 @@ if __name__ == "__main__":
             imgs = Variable(imgs.to(device))
             targets = Variable(targets.to(device), requires_grad=False)
 
-            loss, outputs = model(imgs, targets)
-            loss.backward()
+            if mixed_precision:
+                loss, outputs = model(imgs, targets)
+                loss.backward()
+            else:
+                loss, outputs = model(imgs.half(), targets.half())
+                mpt_optimizer.backward(loss)
 
             if batches_done % opt.gradient_accumulations:
                 # Accumulates gradient before each step
-                optimizer.step()
+                if mixed_precision:
+                    mpt_optimizer.step()
+                else:
+                    optimizer.step()
+
                 optimizer.zero_grad()
+                if mixed_precision:
+                    mpt_optimizer.zero_grad()
 
             # ----------------
             #   Log progress
