@@ -245,7 +245,7 @@ def non_max_suppression(prediction, conf_thres=0.5, nms_thres=0.4):
         # Sort by it
         image_pred = image_pred[(-score).argsort()]
         class_confs, class_preds = image_pred[:, 5:].max(1, keepdim=True)
-        detections = torch.cat((image_pred[:, :5], class_confs.float(), class_preds.float()), 1)
+        detections = torch.cat((image_pred[:, :5], class_confs.half(), class_preds.half()), 1)
         # Perform non-maximum suppression
         keep_boxes = []
         while detections.size(0):
@@ -314,8 +314,8 @@ def build_targets(pred_boxes, pred_cls, target, anchors, ignore_thres):
     # One-hot encoding of label
     tcls[b, best_n, gj, gi, target_labels] = 1
     # Compute label correctness and iou at best anchor
-    class_mask[b, best_n, gj, gi] = (pred_cls[b, best_n, gj, gi].argmax(-1) == target_labels).float()
+    class_mask[b, best_n, gj, gi] = (pred_cls[b, best_n, gj, gi].argmax(-1) == target_labels).half()
     iou_scores[b, best_n, gj, gi] = bbox_iou(pred_boxes[b, best_n, gj, gi], target_boxes, x1y1x2y2=False)
 
-    tconf = obj_mask.float()
+    tconf = obj_mask.half()
     return iou_scores, class_mask, obj_mask, noobj_mask, tx, ty, tw, th, tcls, tconf
