@@ -267,7 +267,7 @@ def non_max_suppression(prediction, conf_thres=0.5, nms_thres=0.4):
 def build_targets(pred_boxes, pred_cls, target, anchors, ignore_thres):
 
     ByteTensor = torch.cuda.ByteTensor if pred_boxes.is_cuda else torch.ByteTensor
-    FloatTensor = torch.cuda.FloatTensor if pred_boxes.is_cuda else torch.FloatTensor
+    HalfTensor = torch.cuda.HalfTensor if pred_boxes.is_cuda else torch.HalfTensor
 
     nB = pred_boxes.size(0)
     nA = pred_boxes.size(1)
@@ -277,13 +277,13 @@ def build_targets(pred_boxes, pred_cls, target, anchors, ignore_thres):
     # Output tensors
     obj_mask = ByteTensor(nB, nA, nG, nG).fill_(0)
     noobj_mask = ByteTensor(nB, nA, nG, nG).fill_(1)
-    class_mask = FloatTensor(nB, nA, nG, nG).fill_(0)
-    iou_scores = FloatTensor(nB, nA, nG, nG).fill_(0)
-    tx = FloatTensor(nB, nA, nG, nG).fill_(0)
-    ty = FloatTensor(nB, nA, nG, nG).fill_(0)
-    tw = FloatTensor(nB, nA, nG, nG).fill_(0)
-    th = FloatTensor(nB, nA, nG, nG).fill_(0)
-    tcls = FloatTensor(nB, nA, nG, nG, nC).fill_(0)
+    class_mask = HalfTensor(nB, nA, nG, nG).fill_(0)
+    iou_scores = HalfTensor(nB, nA, nG, nG).fill_(0)
+    tx = HalfTensor(nB, nA, nG, nG).fill_(0)
+    ty = HalfTensor(nB, nA, nG, nG).fill_(0)
+    tw = HalfTensor(nB, nA, nG, nG).fill_(0)
+    th = HalfTensor(nB, nA, nG, nG).fill_(0)
+    tcls = HalfTensor(nB, nA, nG, nG, nC).fill_(0)
 
     # Convert to position relative to box
     target_boxes = target[:, 2:6] * nG
