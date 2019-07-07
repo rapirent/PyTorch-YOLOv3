@@ -117,7 +117,7 @@ if __name__ == "__main__":
             imgs = Variable(imgs.to(device))
             targets = Variable(targets.to(device), requires_grad=False)
 
-            if mixed_precision:
+            if opt.mixed_precision:
                 loss, outputs = model(imgs, targets)
                 loss.backward()
             else:
@@ -126,13 +126,13 @@ if __name__ == "__main__":
 
             if batches_done % opt.gradient_accumulations:
                 # Accumulates gradient before each step
-                if mixed_precision:
+                if opt.mixed_precision:
                     mpt_optimizer.step()
                 else:
                     optimizer.step()
 
                 optimizer.zero_grad()
-                if mixed_precision:
+                if opt.mixed_precision:
                     mpt_optimizer.zero_grad()
 
             # ----------------
@@ -201,4 +201,7 @@ if __name__ == "__main__":
             print(f"---- mAP {AP.mean()}")
 
         if epoch % opt.checkpoint_interval == 0:
-            torch.save(model.state_dict(), f"checkpoints/yolov3_ckpt_%d.pth" % epoch)
+            if opt.mixed_precision:
+                torch.save(model.state_dict(), f"checkpoints/yolov3_ckpt_mpt_%d.pth" % epoch)
+            else:
+                torch.save(model.state_dict(), f"checkpoints/yolov3_ckpt_%d.pth" % epoch)
