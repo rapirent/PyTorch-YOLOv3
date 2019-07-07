@@ -118,11 +118,11 @@ if __name__ == "__main__":
             targets = Variable(targets.to(device), requires_grad=False)
 
             if opt.mixed_precision:
-                loss, outputs = model(imgs, targets)
-                loss.backward()
-            else:
                 loss, outputs = model(imgs.half(), targets.half())
                 mpt_optimizer.backward(loss)
+            else:
+                loss, outputs = model(imgs, targets)
+                loss.backward()
 
             if batches_done % opt.gradient_accumulations:
                 # Accumulates gradient before each step
