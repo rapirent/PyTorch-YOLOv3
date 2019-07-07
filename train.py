@@ -25,7 +25,7 @@ import torch.optim as optim
 from apex.fp16_utils import FP16_Optimizer
 
 def floatize_bn(module):
-    if isinstance(module, torch.nn.modules.BatchNorm2d._BatchNorm):
+    if isinstance(module, torch.nn.modules.batchnorm._BatchNorm):
         module.float()
     for child in module.children():
         floatize_bn(child)
