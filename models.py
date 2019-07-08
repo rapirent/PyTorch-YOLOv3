@@ -177,13 +177,17 @@ class YOLOLayer(nn.Module):
             -1,
         )
 
-        prediciton = {
+        predicitons = {
             'pred_boxes': pred_boxes,
             'pred_conf': pred_conf,
-            'pred_cls': pred_cls
+            'pred_cls': pred_cls,
+            'x': x,  # Center x
+            'y': y,  # Center y
+            'w': w,  # Width
+            'h': h,  # Height
         }
 
-        return output, prediciton
+        return output, predicitons
 
 class Darknet(nn.Module):
     """YOLOv3 object detection model"""

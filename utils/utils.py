@@ -327,6 +327,11 @@ def compute_loss(predictions, targets=None, model=None):
 
     pred_boxes = predictions['pred_boxes']
     pred_cls = predictions['pred_cls']
+    pred_conf = predictions['pred_conf']
+    x = predictions['x']  # Center x
+    y = predictions['y']  # Center y
+    w = predictions['w']  # Width
+    h = predictions['h']  # Height
     iou_scores, class_mask, obj_mask, noobj_mask, tx, ty, tw, th, tcls, tconf = build_targets(
         pred_boxes=pred_boxes,
         pred_cls=pred_cls,
