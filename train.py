@@ -108,9 +108,12 @@ if __name__ == "__main__":
 
             imgs = Variable(imgs.to(device))
             targets = Variable(targets.to(device), requires_grad=False)
-            loss, outputs = model(imgs, targets)
+            outputs, predictions = model(imgs)
+            loss = compute_loss(predictions, targets, model)
+
             if opt.mixed_precision:
-                amp.scale_loss(loss, optimizer).backward()
+                with amp.scale_loss(loss, optimizer) as scaled_loss:
+                    scaled_loss.backward()
             else:
                 loss.backward()
 
@@ -168,7 +171,6 @@ if __name__ == "__main__":
                 nms_thres=0.5,
                 img_size=opt.img_size,
                 batch_size=8,
-                mixed_precision=opt.mixed_precision
             )
             evaluation_metrics = [
                 ("val_precision", precision.mean()),

@@ -319,3 +319,58 @@ def build_targets(pred_boxes, pred_cls, target, anchors, ignore_thres):
 
     tconf = obj_mask.float()
     return iou_scores, class_mask, obj_mask, noobj_mask, tx, ty, tw, th, tcls, tconf
+
+def compute_loss(predictions, targets=None, model=None):
+
+    if not targets:
+        return 0
+
+    pred_boxes = predictions['pred_boxes']
+    pred_cls = predictions['pred_cls']
+    iou_scores, class_mask, obj_mask, noobj_mask, tx, ty, tw, th, tcls, tconf = build_targets(
+        pred_boxes=pred_boxes,
+        pred_cls=pred_cls,
+        target=targets,
+        anchors=model.scaled_anchors,
+        ignore_thres=model.ignore_thres,
+    )
+    # Loss : Mask outputs to ignore non-existing objects (except with conf. loss)
+    loss_x = model.mse_loss(x[obj_mask], tx[obj_mask])
+    loss_y = model.mse_loss(y[obj_mask], ty[obj_mask])
+    loss_w = model.mse_loss(w[obj_mask], tw[obj_mask])
+    loss_h = model.mse_loss(h[obj_mask], th[obj_mask])
+    loss_conf_obj = model.bce_loss(pred_conf[obj_mask], tconf[obj_mask])
+    loss_conf_noobj = model.bce_loss(pred_conf[noobj_mask], tconf[noobj_mask])
+    loss_conf = model.obj_scale * loss_conf_obj + model.noobj_scale * loss_conf_noobj
+    loss_cls = model.bces_loss(pred_cls[obj_mask], tcls[obj_mask])
+    total_loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
+
+    # Metrics
+    cls_acc = 100 * class_mask[obj_mask].mean()
+    conf_obj = pred_conf[obj_mask].mean()
+    conf_noobj = pred_conf[noobj_mask].mean()
+    conf50 = (pred_conf > 0.5).float()
+    iou50 = (iou_scores > 0.5).float()
+    iou75 = (iou_scores > 0.75).float()
+    detected_mask = conf50 * class_mask * tconf
+    precision = torch.sum(iou50 * detected_mask) / (conf50.sum() + 1e-16)
+    recall50 = torch.sum(iou50 * detected_mask) / (obj_mask.sum() + 1e-16)
+    recall75 = torch.sum(iou75 * detected_mask) / (obj_mask.sum() + 1e-16)
+
+    model.metrics = {
+        "loss": to_cpu(total_loss).item(),
+        "x": to_cpu(loss_x).item(),
+        "y": to_cpu(loss_y).item(),
+        "w": to_cpu(loss_w).item(),
+        "h": to_cpu(loss_h).item(),
+        "conf": to_cpu(loss_conf).item(),
+        "cls": to_cpu(loss_cls).item(),
+        "cls_acc": to_cpu(cls_acc).item(),
+        "recall50": to_cpu(recall50).item(),
+        "recall75": to_cpu(recall75).item(),
+        "precision": to_cpu(precision).item(),
+        "conf_obj": to_cpu(conf_obj).item(),
+        "conf_noobj": to_cpu(conf_noobj).item(),
+        "grid_size": grid_size,
+    }
+    return total_loss
