@@ -213,7 +213,7 @@ class Darknet(nn.Module):
                 x = layer_outputs[-1] + layer_outputs[layer_i]
             elif module_def["type"] == "yolo":
                 x, predictions = module[0](x, img_dim)
-                layer_loss = compute_loss(predictions, targets, model[0])
+                layer_loss = compute_loss(predictions, targets, module[0])
                 loss += layer_loss
                 yolo_outputs.append(x)
             layer_outputs.append(x)
