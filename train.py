@@ -22,14 +22,7 @@ from torchvision import transforms
 from torch.autograd import Variable
 import torch.optim as optim
 
-from apex.fp16_utils import FP16_Optimizer
-
-def floatize_bn(module):
-    if isinstance(module, torch.nn.modules.batchnorm._BatchNorm):
-        module.float()
-    for child in module.children():
-        floatize_bn(child)
-    return module
+from apex import amp
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -64,8 +57,6 @@ if __name__ == "__main__":
 
     # Initiate model
     model = Darknet(opt.model_def).to(device)
-    if opt.mixed_precision:
-        model = floatize_bn(model.half())
     model.apply(weights_init_normal)
 
     # If specified we start from checkpoint
@@ -87,7 +78,8 @@ if __name__ == "__main__":
     )
 
     optimizer = torch.optim.Adam(model.parameters())
-    mpt_optimizer = FP16_Optimizer(optimizer, dynamic_loss_scale=True)
+    if opt.mixed_precision:
+        model, optimizer = amp.initialize(model, optimizer, opt_level='O1')
 
     metrics = [
         "grid_size",
@@ -116,24 +108,16 @@ if __name__ == "__main__":
 
             imgs = Variable(imgs.to(device))
             targets = Variable(targets.to(device), requires_grad=False)
-
+            loss, outputs = model(imgs, targets)
             if opt.mixed_precision:
-                loss, outputs = model(imgs.half(), targets.half())
-                mpt_optimizer.backward(loss)
+                amp.scale_loss(loss, optimizer).backward()
             else:
-                loss, outputs = model(imgs, targets)
                 loss.backward()
 
             if batches_done % opt.gradient_accumulations:
                 # Accumulates gradient before each step
-                if opt.mixed_precision:
-                    mpt_optimizer.step()
-                else:
-                    optimizer.step()
-
+                optimizer.step()
                 optimizer.zero_grad()
-                if opt.mixed_precision:
-                    mpt_optimizer.zero_grad()
 
             # ----------------
             #   Log progress
@@ -183,7 +167,8 @@ if __name__ == "__main__":
                 conf_thres=0.5,
                 nms_thres=0.5,
                 img_size=opt.img_size,
-                batch_size=8
+                batch_size=8,
+                mixed_precision=opt.mixed_precision
             )
             evaluation_metrics = [
                 ("val_precision", precision.mean()),

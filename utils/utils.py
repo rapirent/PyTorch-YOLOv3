@@ -245,7 +245,7 @@ def non_max_suppression(prediction, conf_thres=0.5, nms_thres=0.4):
         # Sort by it
         image_pred = image_pred[(-score).argsort()]
         class_confs, class_preds = image_pred[:, 5:].max(1, keepdim=True)
-        detections = torch.cat((image_pred[:, :5], class_confs.half(), class_preds.half()), 1)
+        detections = torch.cat((image_pred[:, :5], class_confs.float(), class_preds.float()), 1)
         # Perform non-maximum suppression
         keep_boxes = []
         while detections.size(0):
@@ -267,7 +267,7 @@ def non_max_suppression(prediction, conf_thres=0.5, nms_thres=0.4):
 def build_targets(pred_boxes, pred_cls, target, anchors, ignore_thres):
 
     ByteTensor = torch.cuda.ByteTensor if pred_boxes.is_cuda else torch.ByteTensor
-    HalfTensor = torch.cuda.HalfTensor if pred_boxes.is_cuda else torch.HalfTensor
+    FloatTensor = torch.cuda.FloatTensor if pred_boxes.is_cuda else torch.FloatTensor
 
     nB = pred_boxes.size(0)
     nA = pred_boxes.size(1)
@@ -277,13 +277,13 @@ def build_targets(pred_boxes, pred_cls, target, anchors, ignore_thres):
     # Output tensors
     obj_mask = ByteTensor(nB, nA, nG, nG).fill_(0)
     noobj_mask = ByteTensor(nB, nA, nG, nG).fill_(1)
-    class_mask = HalfTensor(nB, nA, nG, nG).fill_(0)
-    iou_scores = HalfTensor(nB, nA, nG, nG).fill_(0)
-    tx = HalfTensor(nB, nA, nG, nG).fill_(0)
-    ty = HalfTensor(nB, nA, nG, nG).fill_(0)
-    tw = HalfTensor(nB, nA, nG, nG).fill_(0)
-    th = HalfTensor(nB, nA, nG, nG).fill_(0)
-    tcls = HalfTensor(nB, nA, nG, nG, nC).fill_(0)
+    class_mask = FloatTensor(nB, nA, nG, nG).fill_(0)
+    iou_scores = FloatTensor(nB, nA, nG, nG).fill_(0)
+    tx = FloatTensor(nB, nA, nG, nG).fill_(0)
+    ty = FloatTensor(nB, nA, nG, nG).fill_(0)
+    tw = FloatTensor(nB, nA, nG, nG).fill_(0)
+    th = FloatTensor(nB, nA, nG, nG).fill_(0)
+    tcls = FloatTensor(nB, nA, nG, nG, nC).fill_(0)
 
     # Convert to position relative to box
     target_boxes = target[:, 2:6] * nG
@@ -314,8 +314,8 @@ def build_targets(pred_boxes, pred_cls, target, anchors, ignore_thres):
     # One-hot encoding of label
     tcls[b, best_n, gj, gi, target_labels] = 1
     # Compute label correctness and iou at best anchor
-    class_mask[b, best_n, gj, gi] = (pred_cls[b, best_n, gj, gi].argmax(-1) == target_labels).half()
+    class_mask[b, best_n, gj, gi] = (pred_cls[b, best_n, gj, gi].argmax(-1) == target_labels).float()
     iou_scores[b, best_n, gj, gi] = bbox_iou(pred_boxes[b, best_n, gj, gi], target_boxes, x1y1x2y2=False)
 
-    tconf = obj_mask.half()
+    tconf = obj_mask.float()
     return iou_scores, class_mask, obj_mask, noobj_mask, tx, ty, tw, th, tcls, tconf
