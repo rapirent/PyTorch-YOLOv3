@@ -321,7 +321,8 @@ def build_targets(pred_boxes, pred_cls, target, anchors, ignore_thres):
     return iou_scores, class_mask, obj_mask, noobj_mask, tx, ty, tw, th, tcls, tconf
 
 def compute_loss(predictions, targets=None, model=None):
-
+    bce_loss = nn.BCELoss()
+    mse_loss = nn.MSELoss()
     if not targets:
         return 0
 
@@ -340,14 +341,14 @@ def compute_loss(predictions, targets=None, model=None):
         ignore_thres=model.ignore_thres,
     )
     # Loss : Mask outputs to ignore non-existing objects (except with conf. loss)
-    loss_x = model.mse_loss(x[obj_mask], tx[obj_mask])
-    loss_y = model.mse_loss(y[obj_mask], ty[obj_mask])
-    loss_w = model.mse_loss(w[obj_mask], tw[obj_mask])
-    loss_h = model.mse_loss(h[obj_mask], th[obj_mask])
-    loss_conf_obj = model.bce_loss(pred_conf[obj_mask], tconf[obj_mask])
-    loss_conf_noobj = model.bce_loss(pred_conf[noobj_mask], tconf[noobj_mask])
+    loss_x = mse_loss(x[obj_mask], tx[obj_mask])
+    loss_y = mse_loss(y[obj_mask], ty[obj_mask])
+    loss_w = mse_loss(w[obj_mask], tw[obj_mask])
+    loss_h = mse_loss(h[obj_mask], th[obj_mask])
+    loss_conf_obj = bce_loss(pred_conf[obj_mask], tconf[obj_mask])
+    loss_conf_noobj = bce_loss(pred_conf[noobj_mask], tconf[noobj_mask])
     loss_conf = model.obj_scale * loss_conf_obj + model.noobj_scale * loss_conf_noobj
-    loss_cls = model.bces_loss(pred_cls[obj_mask], tcls[obj_mask])
+    loss_cls = bce_loss(pred_cls[obj_mask], tcls[obj_mask])
     total_loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
 
     # Metrics
