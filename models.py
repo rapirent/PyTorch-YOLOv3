@@ -7,7 +7,7 @@ from torch.autograd import Variable
 import numpy as np
 
 from utils.parse_config import *
-from utils.utils import build_targets, to_cpu, non_max_suppression
+from utils.utils import build_targets, to_cpu, non_max_suppression, compute_loss
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -212,7 +212,8 @@ class Darknet(nn.Module):
                 layer_i = int(module_def["from"])
                 x = layer_outputs[-1] + layer_outputs[layer_i]
             elif module_def["type"] == "yolo":
-                x, layer_loss = module[0](x, targets, img_dim)
+                x, predictions = module[0](x, img_dim)
+                layer_loss = compute_loss(predictions, targets, model[0])
                 loss += layer_loss
                 yolo_outputs.append(x)
             layer_outputs.append(x)
